@@ -50,7 +50,9 @@ class NMFBatchHALS(NMFBatchBase):
         for i in range(self._hals_max_iter):
             cur_max = 0.0    
             for k in range(self.k):
+                
                 numer = self._XWT[:, k] - self.H @ self._WWT[:, k]
+
                 if self._l1_reg_H > 0.0:
                     numer -= self._l1_reg_H
                 if self._l2_reg_H > 0.0:
@@ -58,20 +60,25 @@ class NMFBatchHALS(NMFBatchBase):
                     h_new = self.H[:, k] * (self._WWT[k, k] / denom) + numer / denom
                 else:
                     h_new = self.H[:, k] + numer / self._WWT[k, k]
+
                 if torch.isnan(h_new).sum() > 0:
                     h_new[:] = 0.0 # divide zero error: set h_new to 0
                 else:
                     h_new = h_new.maximum(self._zero)
+
                 cur_max = max(cur_max, torch.abs(self.H[:, k] - h_new).max())
                 self.H[:, k] = h_new
+
             if i + 1 < self._hals_max_iter and cur_max / self.H.mean() < self._hals_tol:
                 break
 
+        #print(f"Block {i} update H iterates {i+1} iterations.")
         self._HTH = self.H.T @ self.H
 
 
     def _update_W(self):
         HTX = self.H.T @ self.X
+
         for i in range(self._hals_max_iter):
             cur_max = 0.0
             for k in range(self.k):
@@ -89,9 +96,11 @@ class NMFBatchHALS(NMFBatchBase):
                     w_new = w_new.maximum(self._zero)
                 cur_max = max(cur_max, torch.abs(self.W[k, :] - w_new).max())
                 self.W[k, :] = w_new
-            if i + 1 < self._hals_max_iter and cur_max / self.W.mean() < self._hals_tol:
-                break
 
+            if i + 1 < self._hals_max_iter and cur_max / self.W.mean() < self._hals_tol:
+                break   
+                  
+        #print(f"Block {i} update W iterates {k+1} iterations.")
         self._WWT = self.W @ self.W.T
         self._XWT = self.X @ self.W.T
 

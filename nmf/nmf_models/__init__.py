@@ -4,3 +4,4 @@ from ._nmf_batch_nnls_bpp import NMFBatchNnlsBpp
 from ._nmf_online_mu import NMFOnlineMU
 from ._nmf_online_hals import NMFOnlineHALS
 from ._nmf_online_nnls_bpp import NMFOnlineNnlsBpp
+from ._nmf_batch_cd import NMFBatchCD

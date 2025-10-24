@@ -87,7 +87,7 @@ class NMFOnlineHALS(NMFOnlineBase):
                 if j + 1 < self._chunk_max_iter and cur_max / h.mean() < self._h_tol:
                             break
 
-            # print(f"Block {i} update H iterates {j+1} iterations.")
+            print(f"Block {i} update H iterates {j+1} iterations.")
             self.H[idx, :] = h
 
             # Update sufficient statistics A and B.
@@ -126,7 +126,7 @@ class NMFOnlineHALS(NMFOnlineBase):
                 if j + 1 < self._chunk_max_iter and cur_max / self.W.mean() < self._w_tol:
                     break
 
-            # print(f"Block {i} update W iterates {j+1} iterations.")
+            print(f"Block {i} update W iterates {j+1} iterations.")
             i += self._chunk_size
 
 
@@ -162,7 +162,7 @@ class NMFOnlineHALS(NMFOnlineBase):
                 if j + 1 < self._chunk_max_iter and cur_max / h.mean() < self._h_tol:
                     break
 
-            # print(f"Block {i} update H iterates {j+1} iterations.")
+            print(f"Block {i} update H iterates {j+1} iterations.")
 
             hth = h.T @ h
             sum_h_err += self._h_err(h, hth, WWT, xWT)

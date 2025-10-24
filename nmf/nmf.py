@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from typing import List, Union, Tuple, Optional
 
-from .nmf_models import NMFBatchMU, NMFBatchHALS, NMFBatchNnlsBpp, NMFOnlineMU, NMFOnlineHALS, NMFOnlineNnlsBpp
+from .nmf_models import NMFBatchMU, NMFBatchHALS, NMFBatchNnlsBpp, NMFOnlineMU, NMFOnlineHALS, NMFOnlineNnlsBpp, NMFBatchCD
 from .inmf_models import INMFBatchHALS, INMFBatchMU, INMFBatchNnlsBpp, INMFOnlineHALS, INMFOnlineMU, INMFOnlineNnlsBpp
 
 def run_nmf(
@@ -150,7 +150,7 @@ def run_nmf(
         else:
             print("CUDA is not available on your machine. Use CPU mode instead.")
 
-    if algo not in {'mu', 'hals', 'halsvar', 'bpp'}:
+    if algo not in {'mu', 'hals', 'halsvar', 'bpp' , 'cd'}:
         raise ValueError("Parameter algo must be a valid value from ['mu', 'hals', 'halsvar', 'bpp']!")
     if mode not in {'batch', 'online'}:
         raise ValueError("Parameter mode must be a valid value from ['batch', 'online']!")
@@ -174,6 +174,12 @@ def run_nmf(
             kwargs['hals_max_iter'] = batch_hals_max_iter
         else:
             model_class = NMFBatchNnlsBpp
+
+        if algo == 'cd':
+            print("successfully enter cd if")
+            model_class = NMFBatchCD
+            kwargs['hals_tol'] = batch_hals_tol
+            kwargs['hals_max_iter'] = batch_hals_max_iter
     else:
         kwargs['max_pass'] = online_max_pass
         kwargs['chunk_size'] = online_chunk_size
