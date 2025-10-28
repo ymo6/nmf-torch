@@ -36,3 +36,10 @@ def _update_cdnmf_fast(floating[:, ::1] W, floating[:, :] HHt,
                     W[i, t] = max(W[i, t] - grad / hess, 0.)
 
     return violation
+
+
+grad = -XHt + HHt * W
+hess = HHt
+
+if hess != 0:
+   W = max(W- grad / hess, 0.)

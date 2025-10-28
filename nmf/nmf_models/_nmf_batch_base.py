@@ -43,6 +43,9 @@ class NMFBatchBase(NMFBase):
         res = torch.tensor(0.0, dtype=torch.double, device=self._device_type) # make sure res is double to avoid summation errors
         if self._beta == 2:
             res += self._trace(self._WWT, self._HTH) / 2.0 - self._trace(self.H, self._XWT) + self._X_SS_half
+            #diff = self.X - self.H @ self.W
+            #res += 0.5 * torch.norm(diff, p='fro')**2
+
         elif self._beta == 0 or self._beta == 1:
             Y = self._get_HW()
             X_flat = self.X.flatten()
@@ -67,6 +70,11 @@ class NMFBatchBase(NMFBase):
         # Add regularization terms.
         res += self._get_regularization_loss(self.H, self._l1_reg_H, self._l2_reg_H)
         res += self._get_regularization_loss(self.W, self._l1_reg_W, self._l2_reg_W)
+
+        #if torch.isnan(res) or res < 0:
+        #    res = torch.tensor(0.0, dtype=torch.double, device=self.W.device)
+
+        #res = torch.clamp(res, min=0.0)
 
         return torch.sqrt(2.0 * res)
 
