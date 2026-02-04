@@ -15,6 +15,17 @@ NMF-Torch
 
 A PyTorch implementation on Non-negative Matrix Factorization.
 
+Alexandra's modification:
+	Add dataloader option for online hals solver. 
+
+	Note: original online solver move all data onto GPU, while this is faster in computational run time, 
+	when input data is large, CUDA will be OOM. 
+
+	Dataloader solve this problem by loading only the neccessary data onto GPU upon requested, then load
+	data back to CPU after updating the model. 
+
+
+
 Installation
 ^^^^^^^^^^^^^
 
