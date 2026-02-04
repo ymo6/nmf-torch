@@ -1,5 +1,5 @@
 import torch
-
+import numpy
 from ._nmf_base import NMFBase
 from typing import Union
 
@@ -76,7 +76,27 @@ class NMFBatchBase(NMFBase):
 
         #res = torch.clamp(res, min=0.0)
 
-        return torch.sqrt(2.0 * res)
+        return torch.sqrt(2.0 * res) 
+
+    def _cast_tensor(self, X):
+
+        super()._cast_tensor(X)
+
+        if not isinstance(X, torch.Tensor):
+            if self._device_type == 'cpu' and ((self._device_type == torch.float32 and X.dtype == numpy.float32) or (self._device_type == torch.double and X.dtype == numpy.float64)):
+                print("Use CPU")
+                X = torch.from_numpy(X)
+            else:
+                X = torch.tensor(X, dtype=self._tensor_dtype, device=self._device_type)
+        else:
+            if self._device_type != 'cpu' and (not X.is_cuda):
+                print("Use GPU")
+                X = X.to(device=self._device_type)
+
+            if X.dtype != self._tensor_dtype:
+                X = X.type(self._tensor_dtype)
+        return X
+
 
 
     def fit(self, X):
@@ -86,6 +106,7 @@ class NMFBatchBase(NMFBase):
             self._WWT = self.W @ self.W.T
             self._HTH = self.H.T @ self.H
             self._XWT = self.X @ self.W.T
+            self._pre_H = self.H
 
         self._init_err = self._loss()
         self._prev_err = self._init_err

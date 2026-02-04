@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from typing import List, Union, Tuple, Optional
 
-from .nmf_models import NMFBatchMU, NMFBatchHALS, NMFBatchNnlsBpp, NMFOnlineMU, NMFOnlineHALS, NMFOnlineNnlsBpp, NMFBatchCD
+from .nmf_models import NMFBatchMU, NMFBatchHALS, NMFBatchNnlsBpp, NMFOnlineMU, NMFOnlineHALS, NMFOnlineNnlsBpp, NMFOnlineHALS_DL
 from .inmf_models import INMFBatchHALS, INMFBatchMU, INMFBatchNnlsBpp, INMFOnlineHALS, INMFOnlineMU, INMFOnlineNnlsBpp
 
 def run_nmf(
@@ -80,6 +80,7 @@ def run_nmf(
         If mode is online, there is no difference between ``hals`` and ``halsvar``.
     mode: ``str``, optional, default: ``batch``
         Learning mode. Choose from ``batch`` and ``online``. Notice that ``online`` only works when ``beta=2.0``. For other beta loss, it switches back to ``batch`` method.
+        "dataloader" use online with dataloader
     tol: ``float``, optional, default: ``1e-4``
         The toleration used for convergence check.
     n_jobs: ``int``, optional, default: ``-1``
@@ -150,11 +151,11 @@ def run_nmf(
         else:
             print("CUDA is not available on your machine. Use CPU mode instead.")
 
-    if algo not in {'mu', 'hals', 'halsvar', 'bpp' , 'cd'}:
+    if algo not in {'mu', 'hals', 'halsvar', 'bpp'}:
         raise ValueError("Parameter algo must be a valid value from ['mu', 'hals', 'halsvar', 'bpp']!")
-    if mode not in {'batch', 'online'}:
-        raise ValueError("Parameter mode must be a valid value from ['batch', 'online']!")
-    if beta_loss != 2 and mode == 'online':
+    if mode not in {'batch', 'online', 'dataloader'}:
+        raise ValueError("Parameter mode must be a valid value from ['batch', 'online','dataloader']!")
+    if beta_loss != 2 and (mode == 'online' or mode == 'dataloader'):
         print("Cannot perform online update when beta not equal to 2. Switch to batch update method.")
         mode = 'batch'
 
@@ -175,12 +176,7 @@ def run_nmf(
         else:
             model_class = NMFBatchNnlsBpp
 
-        if algo == 'cd':
-            print("successfully enter cd if")
-            model_class = NMFBatchCD
-            kwargs['hals_tol'] = batch_hals_tol
-            kwargs['hals_max_iter'] = batch_hals_max_iter
-    else:
+    elif mode == "online":
         kwargs['max_pass'] = online_max_pass
         kwargs['chunk_size'] = online_chunk_size
         if algo == 'mu' or algo == 'hals' or algo == 'halsvar':
@@ -191,6 +187,19 @@ def run_nmf(
         else:
             model_class = NMFOnlineNnlsBpp
 
+    elif mode == "dataloader":
+
+        kwargs['max_pass'] = online_max_pass
+        kwargs['chunk_size'] = online_chunk_size
+        kwargs['chunk_max_iter'] = online_chunk_max_iter
+        kwargs['h_tol'] = online_h_tol
+        kwargs['w_tol'] = online_w_tol
+        model_class = NMFOnlineHALS_DL
+        print("use Dataloader for online/mini batch NMF")
+    
+    else:
+        raise ValueError("mode must be batch, online, or dataloader")
+
     model = model_class(
                 n_components=n_components,
                 init=init,
@@ -200,6 +209,8 @@ def run_nmf(
                 random_state=random_state,
                 **kwargs
             )
+
+
 
     H = model.fit_transform(X)
     W = model.W
@@ -324,8 +335,8 @@ def integrative_nmf(
 
     if algo not in {'halsvar', 'mu', 'bpp'}:
         raise ValueError("Parameter algo must be a valid value from ['hals', 'mu', 'bpp']!")
-    if mode not in {'batch', 'online'}:
-        raise ValueError("Parameter mode must be a valid value from ['batch', 'online']!")
+    if mode not in {'batch', 'online','dataloader'}:
+        raise ValueError("Parameter mode must be a valid value from ['batch', 'online','dataloader'!")
 
     model_class = None
     kwargs = {'device_type': device_type, 'lam': lam, 'fp_precision': fp_precision}
