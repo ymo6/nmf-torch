@@ -52,7 +52,7 @@ def beta_loss(X, Y, H, W, beta, epsilon, l1_reg_H=0., l2_reg_H=0., l1_reg_W=0., 
 
 
 def run_test(filename, algo, mode, k, n_jobs, fp=None, init='nndsvdar', loss='frobenius', tol=1e-4, max_iter=200, random_state=0,
-             alpha=0.0, l1_ratio=0.0, chunk_size=5000):
+             alpha=0.0, l1_ratio=0.0, minibatch_size=5000):
     X = np.load(filename)
     print(X.shape)
 
@@ -107,9 +107,9 @@ def run_test(filename, algo, mode, k, n_jobs, fp=None, init='nndsvdar', loss='fr
         fp.write(f"{algo} {mode},{ts_end - ts_start} s,{err}\n")
 
 
-def run_batch_test(file_in, test_name, k, max_iter, chunk_size=50000, loss='frobenius', init='random'):
+def run_batch_test(file_in, test_name, k, max_iter, minibatch_size=50000, loss='frobenius', init='random'):
     algo_list = ['hals', 'mu', 'bpp']
-    mode_list = ['batch', 'online']
+    mode_list = ['batch', 'minibatch']
     n_jobs = 12
 
     #log_file = f"{test_name}.log"
@@ -132,8 +132,8 @@ def run_batch_test(file_in, test_name, k, max_iter, chunk_size=50000, loss='frob
         for algo in algo_list:
             for mode in mode_list:
                 cprint(f"{i+1}-th {algo} {mode}:", 'green')
-                #run_test(file_in, algo, mode, k=k, n_jobs=n_jobs, fp=fout, loss=loss, init=init, max_iter=max_iter, chunk_size=chunk_size, random_state=rand_ints[i])
-                run_test(file_in, algo, mode, k=k, n_jobs=n_jobs, fp=None, loss=loss, init=init, max_iter=max_iter, chunk_size=chunk_size, random_state=rand_ints[i])
+                #run_test(file_in, algo, mode, k=k, n_jobs=n_jobs, fp=fout, loss=loss, init=init, max_iter=max_iter, minibatch_size=minibatch_size, random_state=rand_ints[i])
+                run_test(file_in, algo, mode, k=k, n_jobs=n_jobs, fp=None, loss=loss, init=init, max_iter=max_iter, minibatch_size=minibatch_size, random_state=rand_ints[i])
                 gc.collect()
 
 
