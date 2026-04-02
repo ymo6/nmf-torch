@@ -15,15 +15,6 @@ NMF-Torch
 
 A PyTorch implementation on Non-negative Matrix Factorization.
 
-Alexandra's modification:
-	Add dataloader option for online hals solver. 
-
-	Note: original online solver move all data onto GPU, while this is faster in computational run time, 
-	when input data is large, CUDA will be OOM. 
-
-	Dataloader solve this problem by loading only the neccessary data onto GPU upon requested, then load
-	data back to CPU after updating the model. 
-
 
 
 Installation
@@ -61,9 +52,11 @@ By default, ``run_nmf`` function uses the batch HALS solver for NMF decompositio
 - **MU**: Multiplicative Update. Set ``algo='mu'`` in ``run_nmf`` function.
 - **BPP**: Alternative non-negative least squares with Block Principal Pivoting method (`[Kim & Park, 2011]`_). Set ``algo='bpp'`` in ``run_nmf`` function.
 
-Besides, each solver has two modes: batch and online.
-The online mode is a modified version which is scalable for input matrix of a large number of samples.
-You can set ``mode='online'`` in ``run_nmf`` function to switch to use the online mode.
+Besides, each solver has three modes:
+
+- **batch**: Standard batch learning, loading the entire matrix into memory. The default.
+- **minibatch**: Online learning using mini-batches of samples, scalable for input matrices with a large number of samples. Set ``mode='minibatch'`` in ``run_nmf`` function.
+- **dataloader**: Online learning using a PyTorch DataLoader for mini-batch iteration. Unlike ``minibatch`` mode, which loads all data onto the GPU upfront, ``dataloader`` mode loads only the necessary mini-batch onto the GPU on demand and moves it back to CPU after updating the model. This avoids CUDA out-of-memory errors when the input data is too large to fit in GPU memory. Set ``mode='dataloader'`` in ``run_nmf`` function. **Note:** Only supported for the HALS solver (``algo='hals'`` or ``algo='halsvar'``); for other solvers, it falls back to ``minibatch`` mode.
 
 The default beta loss is Frobenius (L2) distance, which is the most commonly used.
 By changing ``beta_loss`` parameter in ``run_nmf`` function,
@@ -73,7 +66,7 @@ users can specify other beta loss metrics:
 - **Itakura-Saito divergence**: ``beta_loss='itakura-saito'`` or ``beta_loss=0``;
 - Or any non-negative float number.
 
-Notice that since online mode only works for L2 loss, if you specify other beta loss, ``run_nmf`` will automatically switch back to batch mode.
+Notice that ``minibatch`` and ``dataloader`` modes only work for L2 loss (Frobenius). If you specify other beta loss, ``run_nmf`` will automatically switch back to batch mode.
 
 For the other parameters in ``run_nmf`` function, please type ``help(run_nmf)`` in your Python interpreter to view.
 
@@ -102,8 +95,9 @@ along with the overall L2 loss between |X_i| and its approximation |H_i| \* (W +
 Advanced Settings
 ++++++++++++++++++
 
-Similarly as in ``run_nmf`` function above, ``integrative_nmf`` provides 2 modes (batch and online) and 3 solvers: HALS, MU, and BPP.
+Similarly as in ``run_nmf`` function above, ``integrative_nmf`` provides 2 modes (batch and minibatch) and 3 solvers: HALS, MU, and BPP.
 By default, batch HALS is used. You can switch to other solvers and modes by specifying ``algo`` and ``mode`` parameters.
+Note that ``dataloader`` mode is not yet supported for integrative NMF and will fall back to ``minibatch``.
 
 There is another important parameter ``lam`` for the coefficient for regularization terms, with default value ``5.0``.
 If set to ``0``, then no regularization will be applied.
