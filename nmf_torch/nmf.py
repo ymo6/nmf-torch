@@ -29,6 +29,7 @@ def run_nmf(
     minibatch_max_iter: int = 200,
     minibatch_h_tol: float = 0.05,
     minibatch_w_tol: float = 0.05,
+    minibatch_shuffle: bool = True,
 ) -> Tuple[np.array, np.array, float]:
     """
     Perform Non-negative Matrix Factorization (NMF).
@@ -122,6 +123,8 @@ def run_nmf(
         The tolerance for updating H per minibatch.
     minibatch_w_tol: ``float``, optional, default: 0.05
         The tolerance for updating W per minibatch.
+    minibatch_shuffle: ``bool``, optional, default: ``True``
+        Whether to shuffle sample order across mini-batches each epoch. If ``False``, samples are processed in their original order, which removes one source of run-to-run variability but may hurt convergence. Only applies to ``minibatch`` and ``dataloader`` modes.
 
     Returns
     -------
@@ -190,6 +193,7 @@ def run_nmf(
             kwargs['minibatch_max_iter'] = minibatch_max_iter
             kwargs['h_tol'] = minibatch_h_tol
             kwargs['w_tol'] = minibatch_w_tol
+            kwargs['shuffle'] = minibatch_shuffle
             model_class = NMFOnlineMU if algo == 'mu' else NMFOnlineHALS
         else:
             model_class = NMFOnlineNnlsBpp
@@ -201,6 +205,7 @@ def run_nmf(
         kwargs['minibatch_max_iter'] = minibatch_max_iter
         kwargs['h_tol'] = minibatch_h_tol
         kwargs['w_tol'] = minibatch_w_tol
+        kwargs['shuffle'] = minibatch_shuffle
         model_class = NMFOnlineHALS_DL
         print("use Dataloader for minibatch NMF")
     
