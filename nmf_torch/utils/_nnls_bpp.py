@@ -3,7 +3,7 @@
 import numpy as np
 import torch
 
-from nmf.cylib.nnls_bpp_utils import _nnls_bpp
+from nmf_torch.cylib.nnls_bpp_utils import _nnls_bpp
 
 def nnls_bpp(CTC, CTB, X, device_type) -> int:
     """

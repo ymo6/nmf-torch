@@ -15,7 +15,7 @@ class INMFBatchHALS(INMFBatchBase):
         random_state: int,
         fp_precision: Union[str, torch.dtype],
         device_type: str,
-        max_iter: int,
+        max_epoch: int,
         hals_tol: float,
         hals_max_iter: int,
     ):
@@ -28,7 +28,7 @@ class INMFBatchHALS(INMFBatchBase):
             random_state=random_state,
             fp_precision=fp_precision,
             device_type=device_type,
-            max_iter=max_iter,
+            max_epoch=max_epoch,
         )
 
         self._zero = torch.tensor(0.0, dtype=self._tensor_dtype, device=self._device_type)
@@ -123,7 +123,7 @@ class INMFBatchHALS(INMFBatchBase):
         super().fit(mats)
 
         # Batch update
-        for i in range(self._max_iter):
+        for i in range(self._max_epoch):
             # print(f"Iteration {i+1}")
             self._update_H_V_W()
 
@@ -137,5 +137,5 @@ class INMFBatchHALS(INMFBatchBase):
 
                 self._prev_err = self._cur_err
 
-        self.num_iters = self._max_iter
+        self.num_iters = self._max_epoch
         print(f"    Not converged after {self.num_iters} iteration(s).")

@@ -19,7 +19,7 @@ class NMFBatchHALS(NMFBatchBase):
         fp_precision: Union[str, torch.dtype],
         device_type: str,
         n_jobs: int = -1,
-        max_iter: int = 500,
+        max_epoch: int = 500,
         hals_tol: float = 0.05,
         hals_max_iter: int = 200,
     ):
@@ -38,7 +38,7 @@ class NMFBatchHALS(NMFBatchBase):
             fp_precision=fp_precision,
             device_type=device_type,
             n_jobs=n_jobs,
-            max_iter=max_iter,
+            max_epoch=max_epoch,
         )
 
         self._zero = torch.tensor(0.0, dtype=self._tensor_dtype, device=self._device_type)
@@ -109,7 +109,7 @@ class NMFBatchHALS(NMFBatchBase):
         super().fit(X)
 
         # Batch update.
-        for i in range(self._max_iter):
+        for i in range(self._max_epoch):
             self._update_H()
             self._update_W()
 
@@ -123,5 +123,5 @@ class NMFBatchHALS(NMFBatchBase):
 
                 self._prev_err = self._cur_err
 
-        self.num_iters = self._max_iter
+        self.num_iters = self._max_epoch
         print(f"    Not converged after {self.num_iters} iteration(s).")

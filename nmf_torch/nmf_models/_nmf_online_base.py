@@ -19,8 +19,8 @@ class NMFOnlineBase(NMFBase):
         fp_precision: Union[str, torch.dtype],
         device_type: str,
         n_jobs: int = -1,
-        max_pass: int = 20,
-        chunk_size: int = 5000,
+        max_epoch: int = 20,
+        minibatch_size: int = 5000,
     ):
         assert beta_loss == 2.0 # only work for F norm for now
 
@@ -39,8 +39,8 @@ class NMFOnlineBase(NMFBase):
             n_jobs=n_jobs,
         )
 
-        self._max_pass = max_pass
-        self._chunk_size = chunk_size
+        self._max_epoch = max_epoch
+        self._minibatch_size = minibatch_size
 
 
     def _h_err(self, h, hth, WWT, xWT):
@@ -60,12 +60,12 @@ class NMFOnlineBase(NMFBase):
 
         sum_h_err = torch.tensor(0.0, dtype=torch.double, device=self._device_type) # make sure sum_h_err is double to avoid summation errors
         while i < self.H.shape[0]:
-            x = self.X[i:(i+self._chunk_size), :]
-            h = self.H[i:(i+self._chunk_size), :]
+            x = self.X[i:(i+self._minibatch_size), :]
+            h = self.H[i:(i+self._minibatch_size), :]
             xWT = x @ self.W.T
             hth = h.T @ h
             sum_h_err += self._h_err(h, hth, WWT, xWT)
-            i += self._chunk_size
+            i += self._minibatch_size
 
         return torch.sqrt(2.0 * (sum_h_err + self._X_SS_half + self._get_regularization_loss(self.W, self._l1_reg_W, self._l2_reg_W)))
 

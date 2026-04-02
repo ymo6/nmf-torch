@@ -15,9 +15,9 @@ class INMFOnlineMU(INMFOnlineBase):
         random_state: int,
         fp_precision: Union[str, torch.dtype],
         device_type: str,
-        max_pass: int,
-        chunk_size: int,
-        chunk_max_iter: int,
+        max_epoch: int,
+        minibatch_size: int,
+        minibatch_max_iter: int,
         h_tol: float,
         v_tol: float,
         w_tol: float,
@@ -31,11 +31,11 @@ class INMFOnlineMU(INMFOnlineBase):
             random_state=random_state,
             fp_precision=fp_precision,
             device_type=device_type,
-            max_pass=max_pass,
-            chunk_size=chunk_size,
+            max_epoch=max_epoch,
+            minibatch_size=minibatch_size,
         )
 
-        self._chunk_max_iter = chunk_max_iter
+        self._minibatch_max_iter = minibatch_max_iter
         self._h_tol = h_tol
         self._v_tol = v_tol
         self._w_tol = w_tol
@@ -69,7 +69,7 @@ class INMFOnlineMU(INMFOnlineBase):
             A.fill_(0.0)
             B.fill_(0.0)
             while i < indices.shape[0]:
-                idx = indices[i:(i+self._chunk_size)]
+                idx = indices[i:(i+self._minibatch_size)]
                 x = self.X[k][idx, :]
                 h = self.H[k][idx, :]
 
@@ -80,10 +80,10 @@ class INMFOnlineMU(INMFOnlineBase):
                 xWVT = x @ WV.T
 
                 h_factor_numer = xWVT
-                for j in range(self._chunk_max_iter):
+                for j in range(self._minibatch_max_iter):
                     h_factor_denom = h @ (WVWVT + self._lambda * VVT) if self._lambda > 0.0 else h @ WVWVT
                     cur_max = self._update_matrix(h, h_factor_numer, h_factor_denom)
-                    if j + 1 < self._chunk_max_iter and cur_max / h.mean() < self._h_tol:
+                    if j + 1 < self._minibatch_max_iter and cur_max / h.mean() < self._h_tol:
                         break
                 # print(f"Batch {k} Block {i} update H iterates {j+1} iterations.")
                 self.H[k][idx, :] = h
@@ -96,11 +96,11 @@ class INMFOnlineMU(INMFOnlineBase):
 
                 # Update V
                 V_factor_numer = B
-                for j in range(self._chunk_max_iter):
+                for j in range(self._minibatch_max_iter):
                     V_factor_denom = A @ (WV + self._lambda * self.V[k])
                     cur_max = self._update_matrix(self.V[k], V_factor_numer, V_factor_denom)
                     WV = self.W + self.V[k]
-                    if j + 1 < self._chunk_max_iter and cur_max / self.V[k].mean() < self._v_tol:
+                    if j + 1 < self._minibatch_max_iter and cur_max / self.V[k].mean() < self._v_tol:
                         break
                 # print(f"Batch {k} Block {i} update V iterates {j+1} iterations.")
 
@@ -111,13 +111,13 @@ class INMFOnlineMU(INMFOnlineBase):
 
                 # Update W
                 W_factor_numer = D
-                for j in range(self._chunk_max_iter):
+                for j in range(self._minibatch_max_iter):
                     W_factor_denom = C @ self.W + E_new
                     cur_max = self._update_matrix(self.W, W_factor_numer, W_factor_denom)
-                    if j + 1 < self._chunk_max_iter and cur_max / self.W.mean() < self._w_tol:
+                    if j + 1 < self._minibatch_max_iter and cur_max / self.W.mean() < self._w_tol:
                         break
                 # print(f"Batch {k} Block {i} update W iterates {j+1} iterations.")
-                i += self._chunk_size
+                i += self._minibatch_size
             E = E_new
 
 
@@ -137,7 +137,7 @@ class INMFOnlineMU(INMFOnlineBase):
             A.fill_(0.0)
             B.fill_(0.0)
             while i < indices.shape[0]:
-                idx = indices[i:(i+self._chunk_size)]
+                idx = indices[i:(i+self._minibatch_size)]
                 x = self.X[k][idx, :]
                 h = self.H[k][idx, :]
 
@@ -148,10 +148,10 @@ class INMFOnlineMU(INMFOnlineBase):
                 xWVT = x @ WV.T
 
                 h_factor_numer = xWVT
-                for j in range(self._chunk_max_iter):
+                for j in range(self._minibatch_max_iter):
                     h_factor_denom = h @ (WVWVT + self._lambda * VVT) if self._lambda > 0.0 else h @ WVWVT
                     cur_max = self._update_matrix(h, h_factor_numer, h_factor_denom)
-                    if j + 1 < self._chunk_max_iter and cur_max / h.mean() < self._h_tol:
+                    if j + 1 < self._minibatch_max_iter and cur_max / h.mean() < self._h_tol:
                         break
                 # print(f"Batch {k} Block {i} update H iterates {j+1} iterations.")
                 self.H[k][idx, :] = h
@@ -164,14 +164,14 @@ class INMFOnlineMU(INMFOnlineBase):
 
                 # Update V
                 V_factor_numer = B
-                for j in range(self._chunk_max_iter):
+                for j in range(self._minibatch_max_iter):
                     V_factor_denom = A @ (WV + self._lambda * self.V[k])
                     cur_max = self._update_matrix(self.V[k], V_factor_numer, V_factor_denom)
                     WV = self.W + self.V[k]
-                    if j + 1 < self._chunk_max_iter and cur_max / self.V[k].mean() < self._v_tol:
+                    if j + 1 < self._minibatch_max_iter and cur_max / self.V[k].mean() < self._v_tol:
                         break
                 # print(f"Batch {k} Block {i} update V iterates {j+1} iterations.")
-                i += self._chunk_size
+                i += self._minibatch_size
 
 
     def _update_H(self):
@@ -184,22 +184,22 @@ class INMFOnlineMU(INMFOnlineBase):
 
             i = 0
             while i < self.H[k].shape[0]:
-                x = self.X[k][i:(i+self._chunk_size), :]
-                h = self.H[k][i:(i+self._chunk_size), :]
+                x = self.X[k][i:(i+self._minibatch_size), :]
+                h = self.H[k][i:(i+self._minibatch_size), :]
 
                 # Update H
                 xWVT = x @ WV.T
                 h_factor_numer = xWVT
-                for j in range(self._chunk_max_iter):
+                for j in range(self._minibatch_max_iter):
                     h_factor_denom = h @ (WVWVT + self._lambda * VVT) if self._lambda > 0.0 else h @ WVWVT
                     cur_max = self._update_matrix(h, h_factor_numer, h_factor_denom)
-                    if j + 1 < self._chunk_max_iter and cur_max / h.mean() < self._h_tol:
+                    if j + 1 < self._minibatch_max_iter and cur_max / h.mean() < self._h_tol:
                             break
                 # print(f"Batch {k} Block {i} update H iterates {j+1} iterations.")
 
                 hth = h.T @ h
                 sum_h_err += self._h_err(h, hth, WVWVT, xWVT, VVT)
-                i += self._chunk_size
+                i += self._minibatch_size
 
         return torch.sqrt(sum_h_err + self._SSX)
 
@@ -211,7 +211,7 @@ class INMFOnlineMU(INMFOnlineBase):
         super().fit(mats)
 
         self.num_iters = -1
-        for i in range(self._max_pass):
+        for i in range(self._max_epoch):
             self._update_one_pass()
             self._cur_err = self._loss()
             print(f"pass {i+1}: loss={self._cur_err}.")
@@ -224,8 +224,8 @@ class INMFOnlineMU(INMFOnlineBase):
             self._prev_err = self._cur_err
 
         if self.num_iters < 0:
-            self.num_iters = self._max_pass
-            print(f"    Not converged after {self._max_pass} pass(es).")
+            self.num_iters = self._max_epoch
+            print(f"    Not converged after {self._max_epoch} pass(es).")
 
         self._update_H_V()
         self._cur_err = self._update_H()

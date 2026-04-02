@@ -15,8 +15,8 @@ class INMFOnlineBase(INMFBase):
         random_state: int,
         fp_precision: Union[str, torch.dtype],
         device_type: str,
-        max_pass: int,
-        chunk_size: int,
+        max_epoch: int,
+        minibatch_size: int,
     ):
         super().__init__(
             n_components=n_components,
@@ -29,8 +29,8 @@ class INMFOnlineBase(INMFBase):
             device_type=device_type,
         )
 
-        self._max_pass = max_pass
-        self._chunk_size = chunk_size
+        self._max_epoch = max_epoch
+        self._minibatch_size = minibatch_size
 
 
     def _h_err(self, h, hth, WVWVT, xWVT, VVT):
@@ -50,12 +50,12 @@ class INMFOnlineBase(INMFBase):
 
             i = 0
             while i < self.H[k].shape[0]:
-                x = self.X[k][i:(i+self._chunk_size), :]
-                h = self.H[k][i:(i+self._chunk_size), :]
+                x = self.X[k][i:(i+self._minibatch_size), :]
+                h = self.H[k][i:(i+self._minibatch_size), :]
                 hth = h.T @ h
                 xWVT = x @ WV.T
                 sum_h_err += self._h_err(h, hth, WVWVT, xWVT, VVT)
-                i += self._chunk_size
+                i += self._minibatch_size
 
         return torch.sqrt(sum_h_err + self._SSX)
 

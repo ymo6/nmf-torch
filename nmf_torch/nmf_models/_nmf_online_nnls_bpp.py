@@ -20,8 +20,8 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
         fp_precision: Union[str, torch.dtype],
         device_type: str,
         n_jobs: int = -1,
-        max_pass: int = 20,
-        chunk_size: int = 5000,
+        max_epoch: int = 20,
+        minibatch_size: int = 5000,
     ):
         super().__init__(
             n_components=n_components,
@@ -36,8 +36,8 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
             fp_precision=fp_precision,
             device_type=device_type,
             n_jobs=n_jobs,
-            max_pass=max_pass,
-            chunk_size=chunk_size,
+            max_epoch=max_epoch,
+            minibatch_size=minibatch_size,
         )
 
         if self._l2_reg_H > 0.0:
@@ -75,8 +75,8 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
         i = 0
         num_processed = 0
         while i < indices.shape[0]:
-            idx = indices[i:(i+self._chunk_size)]
-            cur_chunksize = idx.shape[0]
+            idx = indices[i:(i+self._minibatch_size)]
+            cur_minibatch_size = idx.shape[0]
             x = self.X[idx, :]
             h = self.H[idx, :]
 
@@ -97,7 +97,7 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
             self.H[idx, :] = h
 
             # Update sufficient statistics A and B.
-            num_after = num_processed + cur_chunksize
+            num_after = num_processed + cur_minibatch_size
 
             A *= num_processed
             A += h.T @ h
@@ -121,7 +121,7 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
                 n_iter = nnls_bpp(CTC, B, self.W, self._device_type)
             # print(f"Block {i} update W iterates {n_iter} iterations.")
 
-            i += self._chunk_size
+            i += self._minibatch_size
 
 
     def _update_H(self):
@@ -130,8 +130,8 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
 
         sum_h_err = torch.tensor(0.0, dtype=torch.double, device=self._device_type) # make sure sum_h_err is double to avoid summation errors
         while i < self.H.shape[0]:
-            x = self.X[i:(i+self._chunk_size), :]
-            h = self.H[i:(i+self._chunk_size), :]
+            x = self.X[i:(i+self._minibatch_size), :]
+            h = self.H[i:(i+self._minibatch_size), :]
 
             xWT = x @ self.W.T
 
@@ -149,7 +149,7 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
             hth = h.T @ h
             sum_h_err += self._h_err(h, hth, WWT, xWT)
 
-            i += self._chunk_size
+            i += self._minibatch_size
 
         return torch.sqrt(2.0 * (sum_h_err + self._X_SS_half + self._get_regularization_loss(self.W, self._l1_reg_W, self._l2_reg_W)))
 
@@ -159,7 +159,7 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
         assert self._beta==2, "Cannot perform online update when beta not equal to 2!"
 
         # Online update.
-        self._chunk_size = min(self.X.shape[0], self._chunk_size)
+        self._minibatch_size = min(self.X.shape[0], self._minibatch_size)
 
         l1_reg_W = self._l1_reg_W / self.X.shape[0]
         l2_reg_W = self._l2_reg_W / self.X.shape[0]
@@ -167,7 +167,7 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
             self._l2_W_I *= l2_reg_W
 
         self.num_iters = -1
-        for i in range(self._max_pass):
+        for i in range(self._max_epoch):
             self._update_one_pass(l1_reg_W, l2_reg_W)
             self._cur_err = self._loss()
             print(f"Pass {i+1}, loss={self._cur_err}.")
@@ -180,8 +180,8 @@ class NMFOnlineNnlsBpp(NMFOnlineBase):
             self._prev_err = self._cur_err
 
         if self.num_iters < 0:
-            self.num_iters = self._max_pass
-            print(f"    Not converged after {self._max_pass} pass(es).")
+            self.num_iters = self._max_epoch
+            print(f"    Not converged after {self._max_epoch} pass(es).")
 
         print("Update H")
         self._cur_err = self._update_H()

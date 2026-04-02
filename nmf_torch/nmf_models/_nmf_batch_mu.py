@@ -60,7 +60,7 @@ class NMFBatchMU(NMFBatchBase):
         super().fit(X)
 
         # Batch update.
-        for i in range(self._max_iter):
+        for i in range(self._max_epoch):
             self._update_H()
             self._update_W()
 
@@ -74,5 +74,5 @@ class NMFBatchMU(NMFBatchBase):
 
                 self._prev_err = self._cur_err
 
-        self.num_iters = self._max_iter
+        self.num_iters = self._max_epoch
         print(f"    Not converged after {self.num_iters} iteration(s).")

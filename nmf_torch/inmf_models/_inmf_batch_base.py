@@ -15,7 +15,7 @@ class INMFBatchBase(INMFBase):
         random_state: int,
         fp_precision: Union[str, torch.dtype],
         device_type: str,
-        max_iter: int,
+        max_epoch: int,
     ):
         super().__init__(
             n_components=n_components,
@@ -28,7 +28,7 @@ class INMFBatchBase(INMFBase):
             device_type=device_type,
         )
 
-        self._max_iter = max_iter
+        self._max_epoch = max_epoch
 
 
     def _loss(self):

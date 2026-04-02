@@ -99,7 +99,7 @@ class NMFBase:
             H[:, 0] = S[0].sqrt() * U[:, 0]
             W[0, :] = S[0].sqrt() * V[:, 0]
 
-            for j in range(2, self.k):
+            for j in range(1, self.k):
                 x, y = U[:, j], V[:, j]
                 x_p, y_p = x.maximum(torch.zeros_like(x, device=self._device_type)), y.maximum(torch.zeros_like(y, device=self._device_type))
                 x_n, y_n = x.minimum(torch.zeros_like(x, device=self._device_type)).abs(), y.minimum(torch.zeros_like(y, device=self._device_type)).abs()
@@ -140,7 +140,7 @@ class NMFBase:
 
     def _cast_tensor(self, X):
         if not isinstance(X, torch.Tensor):
-            if self._device_type == 'cpu' and ((self._device_type == torch.float32 and X.dtype == numpy.float32) or (self._device_type == torch.double and X.dtype == numpy.float64)):
+            if self._device_type == 'cpu' and ((self._tensor_dtype == torch.float32 and X.dtype == numpy.float32) or (self._tensor_dtype == torch.double and X.dtype == numpy.float64)):
                 X = torch.from_numpy(X)
             else:
                 X = torch.tensor(X, dtype=self._tensor_dtype, device=self._device_type)

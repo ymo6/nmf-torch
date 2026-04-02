@@ -20,7 +20,7 @@ class NMFBatchNnlsBpp(NMFBatchBase):
         fp_precision: Union[str, torch.dtype],
         device_type: str,
         n_jobs: int = -1,
-        max_iter: int = 500,
+        max_epoch: int = 500,
     ):
         assert beta_loss == 2.0 # only work for F norm for now
 
@@ -37,7 +37,7 @@ class NMFBatchNnlsBpp(NMFBatchBase):
             fp_precision=fp_precision,
             device_type=device_type,
             n_jobs=n_jobs,
-            max_iter=max_iter,
+            max_epoch=max_epoch,
         )
 
         if self._l2_reg_H > 0.0:
@@ -90,7 +90,7 @@ class NMFBatchNnlsBpp(NMFBatchBase):
         super().fit(X)
 
         # Batch update.
-        for i in range(self._max_iter):
+        for i in range(self._max_epoch):
             self._update_H()
             self._update_W()
 
@@ -104,5 +104,5 @@ class NMFBatchNnlsBpp(NMFBatchBase):
 
                 self._prev_err = self._cur_err
 
-        self.num_iters = self._max_iter
+        self.num_iters = self._max_epoch
         print(f"    Not converged after {self.num_iters} iteration(s).")

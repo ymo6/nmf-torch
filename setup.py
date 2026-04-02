@@ -9,7 +9,7 @@ with open(path.join(here, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
 extensions = [
-    Extension("nmf.cylib.nnls_bpp_utils", ["ext_modules/nnls_bpp_utils.pyx"]),
+    Extension("nmf_torch.cylib.nnls_bpp_utils", ["ext_modules/nnls_bpp_utils.pyx"]),
 ]
 
 setup(

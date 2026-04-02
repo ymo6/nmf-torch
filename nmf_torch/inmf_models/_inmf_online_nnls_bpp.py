@@ -26,7 +26,7 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
             A.fill_(0.0)
             B.fill_(0.0)
             while i < indices.shape[0]:
-                idx = indices[i:(i+self._chunk_size)]
+                idx = indices[i:(i+self._minibatch_size)]
                 x = self.X[k][idx, :]
                 h = self.H[k][idx, :]
 
@@ -62,7 +62,7 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
                 n_iter = nnls_bpp(C, D - E_new, self.W, self._device_type)
                 # print(f"Batch {k} Block {i} W n_iter={n_iter}.")
 
-                i += self._chunk_size
+                i += self._minibatch_size
             E = E_new
 
 
@@ -82,7 +82,7 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
             A.fill_(0.0)
             B.fill_(0.0)
             while i < indices.shape[0]:
-                idx = indices[i:(i+self._chunk_size)]
+                idx = indices[i:(i+self._minibatch_size)]
                 x = self.X[k][idx, :]
                 h = self.H[k][idx, :]
 
@@ -109,7 +109,7 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
                 n_iter = nnls_bpp(A * (1.0 + self._lambda), B - A @ self.W, self.V[k], self._device_type)
                 # print(f"Batch {k} Block {i} V n_iter={n_iter}.")
 
-                i += self._chunk_size
+                i += self._minibatch_size
 
 
     def _update_H(self):
@@ -122,8 +122,8 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
 
             i = 0
             while i < self.H[k].shape[0]:
-                x = self.X[k][i:(i+self._chunk_size), :]
-                h = self.H[k][i:(i+self._chunk_size), :]
+                x = self.X[k][i:(i+self._minibatch_size), :]
+                h = self.H[k][i:(i+self._minibatch_size), :]
 
                 # Update H
                 xWVT = x @ WV.T
@@ -135,7 +135,7 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
 
                 hth = h.T @ h
                 sum_h_err += self._h_err(h, hth, WVWVT, xWVT, VVT)
-                i += self._chunk_size
+                i += self._minibatch_size
 
         return torch.sqrt(sum_h_err + self._SSX)
 
@@ -147,7 +147,7 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
         super().fit(mats)
 
         self.num_iters = -1
-        for i in range(self._max_pass):
+        for i in range(self._max_epoch):
             self._update_one_pass()
             self._cur_err = self._loss()
             print(f"pass {i+1}: loss={self._cur_err}.")
@@ -160,8 +160,8 @@ class INMFOnlineNnlsBpp(INMFOnlineBase):
             self._prev_err = self._cur_err
 
         if self.num_iters < 0:
-            self.num_iters = self._max_pass
-            print(f"    Not converged after {self._max_pass} pass(es).")
+            self.num_iters = self._max_epoch
+            print(f"    Not converged after {self._max_epoch} pass(es).")
 
         self._update_H_V()
         self._cur_err = self._update_H()

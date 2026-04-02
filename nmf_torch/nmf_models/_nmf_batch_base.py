@@ -19,7 +19,7 @@ class NMFBatchBase(NMFBase):
         fp_precision: Union[str, torch.dtype],
         device_type: str,
         n_jobs: int = -1,
-        max_iter: int = 500,
+        max_epoch: int = 500,
     ):
         super().__init__(
             n_components=n_components,
@@ -36,7 +36,7 @@ class NMFBatchBase(NMFBase):
             n_jobs=n_jobs,
         )
 
-        self._max_iter = max_iter
+        self._max_epoch = max_epoch
 
 
     def _loss(self):
@@ -83,7 +83,7 @@ class NMFBatchBase(NMFBase):
         super()._cast_tensor(X)
 
         if not isinstance(X, torch.Tensor):
-            if self._device_type == 'cpu' and ((self._device_type == torch.float32 and X.dtype == numpy.float32) or (self._device_type == torch.double and X.dtype == numpy.float64)):
+            if self._device_type == 'cpu' and ((self._tensor_dtype == torch.float32 and X.dtype == numpy.float32) or (self._tensor_dtype == torch.double and X.dtype == numpy.float64)):
                 print("Use CPU")
                 X = torch.from_numpy(X)
             else:
