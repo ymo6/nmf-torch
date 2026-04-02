@@ -15,12 +15,21 @@ NMF-Torch
 
 A PyTorch implementation on Non-negative Matrix Factorization.
 
+.. warning::
+
+   This is a **fork** of the original `nmf-torch <https://github.com/lilab-bcb/nmf-torch>`_ by Li Lab.
+   It adds a DataLoader-based minibatch mode for memory-efficient GPU usage, a shuffle control parameter,
+   and other modifications. For the original upstream package, see https://github.com/lilab-bcb/nmf-torch.
 
 
 Installation
 ^^^^^^^^^^^^^
 
-This package is published on PyPI::
+Install directly from this fork::
+
+	pip install git+https://github.com/ymo6/nmf-torch.git
+
+For the original upstream package from PyPI::
 
 	pip install nmf-torch
 
@@ -33,7 +42,7 @@ NMF
 
 Given a non-negative numeric matrix ``X`` of shape M-by-N (M is number of samples, N number of features) in either numpy array or torch tensor structure, run the following code::
 
-	from nmf import run_nmf
+	from nmf_torch import run_nmf
 	H, W, err = run_nmf(X, n_components=20)
 
 will decompose ``X`` into two new non-negative matrices:
@@ -81,7 +90,7 @@ i.e. each X\ :sub:`i` in ``X`` has shape (|M_i|, N), where |M_i| is number of sa
 
 The following code::
 
-	from nmf import integrative_nmf
+	from nmf_torch import integrative_nmf
 	H, W, V, err = integrative_nmf(X, n_components=20)
 
 will perform iNMF, which results in the following non-negative matrices:
