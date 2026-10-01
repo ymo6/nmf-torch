@@ -87,12 +87,15 @@ class NMFOnlineHALS(NMFOnlineBase):
                     else:
                         hvec = hvec.maximum(self._zero)
                     cur_max = max(cur_max, torch.abs(h[:, k] - hvec).max())
+                    cur_max = max(cur_max, torch.abs(h[:, k] - hvec).max())
                     h[:, k] = hvec
                 
                 if j + 1 < self._minibatch_max_iter and cur_max / h.mean() < self._h_tol:
-                            break
+                    break
 
-            # print(f"Block {i} update H iterates {j+1} iterations.")
+            print(f"        Block {i // self._minibatch_size} update H iterates {j+1} iterations"
+                  f"{' (hit max_iter)' if j + 1 == self._minibatch_max_iter else ''}.")
+            # print(f"            max|dH|={float(cur_max):.4g}, rel={float(cur_max / h.mean()):.4g} (tol {self._h_tol}).")
             self.H[idx, :] = h
 
             # Update sufficient statistics A and B.
@@ -131,7 +134,9 @@ class NMFOnlineHALS(NMFOnlineBase):
                 if j + 1 < self._minibatch_max_iter and cur_max / self.W.mean() < self._w_tol:
                     break
 
-            # print(f"Block {i} update W iterates {j+1} iterations.")
+            print(f"        Block {i // self._minibatch_size} update W iterates {j+1} iterations"
+                  f"{' (hit max_iter)' if j + 1 == self._minibatch_max_iter else ''}.")
+            # print(f"            max|dW|={float(cur_max):.4g}, rel={float(cur_max / self.W.mean()):.4g} (tol {self._w_tol}).")
             i += self._minibatch_size
 
 
@@ -167,8 +172,9 @@ class NMFOnlineHALS(NMFOnlineBase):
                 if j + 1 < self._minibatch_max_iter and cur_max / h.mean() < self._h_tol:
                     break
 
-            # print(f"Block {i} update H iterates {j+1} iterations.")
-
+            print(f"        Final block {i // self._minibatch_size} update H iterates {j+1} iterations"
+                  f"{' (hit max_iter)' if j + 1 == self._minibatch_max_iter else ''}.")
+            # print(f"            max|dH|={float(cur_max):.4g}, rel={float(cur_max / h.mean()):.4g} (tol {self._h_tol}).")
             hth = h.T @ h
             sum_h_err += self._h_err(h, hth, WWT, xWT)
 
@@ -190,15 +196,17 @@ class NMFOnlineHALS(NMFOnlineBase):
         self.num_iters = -1
         for i in range(self._max_epoch):
             self._update_one_pass(l1_reg_W, l2_reg_W)
-            self._cur_err = self._loss()
-            print(f"Pass {i+1}, loss={self._cur_err}.")
 
-            if self._is_converged(self._prev_err, self._cur_err, self._init_err):
-                self.num_iters = i + 1
-                print(f"    Converged after {self.num_iters} pass(es).")
-                break
+            if (i + 1) % 10 == 0:
+                self._cur_err = self._loss()
+                print(f"Pass {i+1}, loss={self._cur_err}.")
 
-            self._prev_err = self._cur_err
+                if self._is_converged(self._prev_err, self._cur_err, self._init_err):
+                    self.num_iters = i + 1
+                    print(f"    Converged after {self.num_iters} pass(es).")
+                    break
+
+                self._prev_err = self._cur_err
 
         if self.num_iters < 0:
             self.num_iters = self._max_epoch

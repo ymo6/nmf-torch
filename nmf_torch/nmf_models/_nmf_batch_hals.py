@@ -72,7 +72,10 @@ class NMFBatchHALS(NMFBatchBase):
             if i + 1 < self._hals_max_iter and cur_max / self.H.mean() < self._hals_tol:
                 break
 
-        #print(f"Block {i} update H iterates {i+1} iterations.")
+        print(f"        Update H iterates {i+1} iterations"
+              f"{' (hit max_iter)' if i + 1 == self._hals_max_iter else ''}.")
+        # print(f"            max|dH|={float(cur_max):.4g}, rel={float(cur_max / self.H.mean()):.4g} (tol {self._hals_tol}).")
+
         self._HTH = self.H.T @ self.H
 
 
@@ -98,9 +101,12 @@ class NMFBatchHALS(NMFBatchBase):
                 self.W[k, :] = w_new
 
             if i + 1 < self._hals_max_iter and cur_max / self.W.mean() < self._hals_tol:
-                break   
+                break
+
+        print(f"        Update W iterates {i+1} iterations"
+              f"{' (hit max_iter)' if i + 1 == self._hals_max_iter else ''}.")
+        # print(f"            max|dW|={float(cur_max):.4g}, rel={float(cur_max / self.W.mean()):.4g} (tol {self._hals_tol}).")
                   
-        #print(f"Block {i} update W iterates {k+1} iterations.")
         self._WWT = self.W @ self.W.T
         self._XWT = self.X @ self.W.T
 

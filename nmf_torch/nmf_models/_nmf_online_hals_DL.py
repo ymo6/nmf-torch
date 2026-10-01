@@ -56,7 +56,7 @@ class NMFOnlineHALS_DL(NMFOnlineBase_DL):
         B = torch.zeros((self.k, self.X.shape[1]), dtype=self._tensor_dtype, device=self._device_type)
 
         num_processed = 0
-        for x, idx in self.dataloader:
+        for b, (x, idx) in enumerate(self.dataloader):
             x = x.to(self._device_type)
             cur_minibatch_size = idx.shape[0]
 
@@ -86,9 +86,11 @@ class NMFOnlineHALS_DL(NMFOnlineBase_DL):
                     h[:, k] = hvec
 
                 if j + 1 < self._minibatch_max_iter and cur_max / h.mean() < self._h_tol:
-                            break
+                    break
 
-            #print(f"Update H iterates {j+1} iterations.")
+            print(f"        Block {b} update H iterates {j+1} iterations"
+                  f"{' (hit max_iter)' if j + 1 == self._minibatch_max_iter else ''}.")
+            # print(f"            max|dH|={float(cur_max):.4g}, rel={float(cur_max / h.mean()):.4g} (tol {self._h_tol}).")
             self.H[idx, :] = h
 
             # Update sufficient statistics A and B.
@@ -127,14 +129,17 @@ class NMFOnlineHALS_DL(NMFOnlineBase_DL):
                 if j + 1 < self._minibatch_max_iter and cur_max / self.W.mean() < self._w_tol:
                     break
 
-            #print(f"update W iterates {j+1} iterations.")
+            print(f"        Block {b} update W iterates {j+1} iterations"
+                  f"{' (hit max_iter)' if j + 1 == self._minibatch_max_iter else ''}.")
+            # print(f"            max|dW|={float(cur_max):.4g}, rel={float(cur_max / self.W.mean()):.4g} (tol {self._w_tol}).")
+
 
 
     def _update_H(self):
         WWT = self.W @ self.W.T
 
         sum_h_err = torch.tensor(0.0, dtype=torch.double, device=self._device_type) # make sure sum_h_err is double to avoid summation errors
-        for x, idx in self.dataloader:
+        for b, (x, idx) in enumerate(self.dataloader):
             x = x.to(self._device_type)
             h = self.H[idx, :]
 
@@ -161,8 +166,9 @@ class NMFOnlineHALS_DL(NMFOnlineBase_DL):
                 if j + 1 < self._minibatch_max_iter and cur_max / h.mean() < self._h_tol:
                     break
 
-            # print(f"Block update H iterates {j+1} iterations.")
-
+            print(f"        Final block {b} update H iterates {j+1} iterations"
+                  f"{' (hit max_iter)' if j + 1 == self._minibatch_max_iter else ''}.")
+            # print(f"            max|dH|={float(cur_max):.4g}, rel={float(cur_max / h.mean()):.4g} (tol {self._h_tol}).")
             self.H[idx, :] = h
 
             hth = h.T @ h
@@ -183,15 +189,17 @@ class NMFOnlineHALS_DL(NMFOnlineBase_DL):
         self.num_iters = -1
         for i in range(self._max_epoch):
             self._update_one_pass(l1_reg_W, l2_reg_W)
-            self._cur_err = self._loss()
-            print(f"Pass {i+1}, loss={self._cur_err}.")
 
-            if self._is_converged(self._prev_err, self._cur_err, self._init_err):
-                self.num_iters = i + 1
-                print(f"    Converged after {self.num_iters} pass(es).")
-                break
+            if (i + 1) % 10 == 0:
+                self._cur_err = self._loss()
+                print(f"Pass {i+1}, loss={self._cur_err}.")
 
-            self._prev_err = self._cur_err
+                if self._is_converged(self._prev_err, self._cur_err, self._init_err):
+                    self.num_iters = i + 1
+                    print(f"    Converged after {self.num_iters} pass(es).")
+                    break
+
+                self._prev_err = self._cur_err
 
         if self.num_iters < 0:
             self.num_iters = self._max_epoch
