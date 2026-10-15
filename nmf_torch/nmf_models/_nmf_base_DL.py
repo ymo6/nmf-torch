@@ -163,7 +163,12 @@ class NMFBase_DL:
 
         self.X = X
         if self._beta == 2:  # Cache sum of X^2 divided by 2 for speed-up of calculating beta loss.
-            self._X_SS_half = (X.norm(p=2)**2 / 2).double()
+            # X stays on the CPU, where a float32 norm underestimates sum(X^2) (12.5% low on 214k x 5000).
+            # Accumulate in float64, 10k rows at a time so X is never fully duplicated as float64.
+            X_SS = torch.tensor(0.0, dtype=torch.double)
+            for i in range(0, X.shape[0], 10000):
+                X_SS += X[i:(i+10000)].double().pow(2).sum()
+            self._X_SS_half = X_SS / 2
         self._initialize_H_W()
 
 

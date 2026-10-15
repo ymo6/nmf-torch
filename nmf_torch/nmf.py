@@ -30,6 +30,9 @@ def run_nmf(
     minibatch_h_tol: float = 0.05,
     minibatch_w_tol: float = 0.05,
     minibatch_shuffle: bool = True,
+    minibatch_rescale: bool = True,
+    minibatch_patience: Optional[int] = 10,
+    verbose: bool = False,
 ) -> Tuple[np.array, np.array, float]:
     """
     Perform Non-negative Matrix Factorization (NMF).
@@ -125,6 +128,12 @@ def run_nmf(
         The tolerance for updating W per minibatch.
     minibatch_shuffle: ``bool``, optional, default: ``True``
         Whether to shuffle sample order across mini-batches each epoch. If ``False``, samples are processed in their original order, which removes one source of run-to-run variability but may hurt convergence. Only applies to ``minibatch`` and ``dataloader`` modes.
+    minibatch_rescale: ``bool``, optional, default: ``True``
+        If ``True``, rescale each row of W to unit L2 norm after every epoch (and scale the matching column of H the other way), so W·H and the loss are unchanged. This stops a component's W row from drifting toward float32 overflow. Ignored when any regularization is on. Only applies to the HALS solver in ``minibatch`` and ``dataloader`` modes.
+    minibatch_patience: ``int`` or ``None``, optional, default: ``10``
+        Check the loss every epoch and stop only after this many epochs without a new best loss (W/H are restored to the best epoch). ``None`` or ``0`` keeps the original rule: loss checked every 10 epochs, stop on the first increase. Only applies to the HALS solver in ``minibatch`` and ``dataloader`` modes.
+    verbose: ``bool``, optional, default: ``False``
+        If ``True``, print how many inner iterations each H/W update took (and whether it hit the max_iter cap). Only applies to the HALS solvers (``algo='hals'`` or ``'halsvar'``).
 
     Returns
     -------
@@ -183,6 +192,7 @@ def run_nmf(
             model_class = NMFBatchHALS
             kwargs['hals_tol'] = batch_hals_tol
             kwargs['hals_max_iter'] = batch_hals_max_iter
+            kwargs['verbose'] = verbose
         else:
             model_class = NMFBatchNnlsBpp
 
@@ -194,7 +204,13 @@ def run_nmf(
             kwargs['h_tol'] = minibatch_h_tol
             kwargs['w_tol'] = minibatch_w_tol
             kwargs['shuffle'] = minibatch_shuffle
-            model_class = NMFOnlineMU if algo == 'mu' else NMFOnlineHALS
+            if algo == 'mu':
+                model_class = NMFOnlineMU
+            else:
+                model_class = NMFOnlineHALS
+                kwargs['verbose'] = verbose
+                kwargs['rescale'] = minibatch_rescale
+                kwargs['patience'] = minibatch_patience
         else:
             model_class = NMFOnlineNnlsBpp
 
@@ -206,6 +222,9 @@ def run_nmf(
         kwargs['h_tol'] = minibatch_h_tol
         kwargs['w_tol'] = minibatch_w_tol
         kwargs['shuffle'] = minibatch_shuffle
+        kwargs['verbose'] = verbose
+        kwargs['rescale'] = minibatch_rescale
+        kwargs['patience'] = minibatch_patience
         model_class = NMFOnlineHALS_DL
         print("use Dataloader for minibatch NMF")
     

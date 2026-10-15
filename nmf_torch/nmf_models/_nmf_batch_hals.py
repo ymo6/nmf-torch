@@ -22,6 +22,7 @@ class NMFBatchHALS(NMFBatchBase):
         max_epoch: int = 500,
         hals_tol: float = 0.05,
         hals_max_iter: int = 200,
+        verbose: bool = False,
     ):
         assert beta_loss == 2.0 # only work for F norm for now
 
@@ -44,6 +45,7 @@ class NMFBatchHALS(NMFBatchBase):
         self._zero = torch.tensor(0.0, dtype=self._tensor_dtype, device=self._device_type)
         self._hals_tol = hals_tol
         self._hals_max_iter = hals_max_iter
+        self._verbose = verbose
 
 
     def _update_H(self):
@@ -72,8 +74,9 @@ class NMFBatchHALS(NMFBatchBase):
             if i + 1 < self._hals_max_iter and cur_max / self.H.mean() < self._hals_tol:
                 break
 
-        print(f"        Update H iterates {i+1} iterations"
-              f"{' (hit max_iter)' if i + 1 == self._hals_max_iter else ''}.")
+        if self._verbose:
+            print(f"        Update H iterates {i+1} iterations"
+                  f"{' (hit max_iter)' if i + 1 == self._hals_max_iter else ''}.")
         # print(f"            max|dH|={float(cur_max):.4g}, rel={float(cur_max / self.H.mean()):.4g} (tol {self._hals_tol}).")
 
         self._HTH = self.H.T @ self.H
@@ -103,8 +106,9 @@ class NMFBatchHALS(NMFBatchBase):
             if i + 1 < self._hals_max_iter and cur_max / self.W.mean() < self._hals_tol:
                 break
 
-        print(f"        Update W iterates {i+1} iterations"
-              f"{' (hit max_iter)' if i + 1 == self._hals_max_iter else ''}.")
+        if self._verbose:
+            print(f"        Update W iterates {i+1} iterations"
+                  f"{' (hit max_iter)' if i + 1 == self._hals_max_iter else ''}.")
         # print(f"            max|dW|={float(cur_max):.4g}, rel={float(cur_max / self.W.mean()):.4g} (tol {self._hals_tol}).")
                   
         self._WWT = self.W @ self.W.T

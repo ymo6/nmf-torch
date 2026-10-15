@@ -21,7 +21,7 @@ except ImportError:  # < Python 3.8: Use backport module
     from importlib_metadata import version, PackageNotFoundError
 
 try:
-    __version__ = version('nmf-torch')
+    __version__ = version('nmf-torch-dl')
     del version
 except PackageNotFoundError:
     pass

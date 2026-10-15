@@ -4,14 +4,14 @@ NMF-Torch
 
 |PyPI| |Python| |License|
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/nmf-torch.svg
-   :target: https://pypi.org/project/nmf-torch
+.. |PyPI| image:: https://img.shields.io/pypi/v/nmf-torch-dl.svg
+   :target: https://pypi.org/project/nmf-torch-dl
 
-.. |Python| image:: https://img.shields.io/pypi/pyversions/nmf-torch
-   :target: https://pypi.org/project/nmf-torch
+.. |Python| image:: https://img.shields.io/pypi/pyversions/nmf-torch-dl
+   :target: https://pypi.org/project/nmf-torch-dl
 
-.. |License| image:: https://img.shields.io/github/license/lilab-bcb/nmf-torch
-   :target: https://github.com/lilab-bcb/nmf-torch/blob/main/LICENSE
+.. |License| image:: https://img.shields.io/github/license/ymo6/nmf-torch
+   :target: https://github.com/ymo6/nmf-torch/blob/main/LICENSE
 
 A PyTorch implementation on Non-negative Matrix Factorization.
 
@@ -25,11 +25,15 @@ A PyTorch implementation on Non-negative Matrix Factorization.
 Installation
 ^^^^^^^^^^^^^
 
-Install directly from this fork::
+Install this fork from PyPI (the import name is ``nmf_torch``)::
+
+	pip install nmf-torch-dl
+
+Or install the latest development version from GitHub::
 
 	pip install git+https://github.com/ymo6/nmf-torch.git
 
-For the original upstream package from PyPI::
+For the original upstream package from PyPI (import name ``nmf``)::
 
 	pip install nmf-torch
 
@@ -76,6 +80,8 @@ users can specify other beta loss metrics:
 - Or any non-negative float number.
 
 Notice that ``minibatch`` and ``dataloader`` modes only work for L2 loss (Frobenius). If you specify other beta loss, ``run_nmf`` will automatically switch back to batch mode.
+
+To print how many inner iterations each HALS H/W update took (useful for checking convergence), pass ``verbose=True`` to ``run_nmf``.
 
 For the other parameters in ``run_nmf`` function, please type ``help(run_nmf)`` in your Python interpreter to view.
 
