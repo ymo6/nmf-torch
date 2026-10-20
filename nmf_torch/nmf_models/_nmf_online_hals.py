@@ -30,6 +30,7 @@ class NMFOnlineHALS(NMFOnlineBase):
         rescale: bool = True,
         patience: Optional[int] = 10,
         tol_window: int = 10,
+        persistent_stats: bool = True,
     ):
         super().__init__(
             n_components=n_components,
@@ -68,6 +69,23 @@ class NMFOnlineHALS(NMFOnlineBase):
             raise ValueError(f"patience must be None or an int >= 0, got {patience!r}.")
         self._patience = patience or None
         self._tol_window = tol_window
+        # Sufficient statistics for W. True: A = HᵀH/n and B = HᵀX/n always cover all n cells, and each
+        # block swaps its old contribution for the new one, so the fixed point is batch HALS's.
+        # False: the original rule (A, B reset every pass, running average over blocks seen so far).
+        self._persistent_stats = persistent_stats
+
+
+    def _init_stats(self):
+        """A = HᵀH/n and B = HᵀX/n over all cells from the current H, kept in float64 because they are
+        updated in place (subtract old block, add new block) for the whole fit."""
+        n = self.X.shape[0]
+        self._A = torch.zeros((self.k, self.k), dtype=torch.double, device=self._device_type)
+        self._B = torch.zeros((self.k, self.X.shape[1]), dtype=torch.double, device=self._device_type)
+        for i in range(0, n, self._minibatch_size):
+            h = self.H[i:(i+self._minibatch_size), :]
+            x = self.X[i:(i+self._minibatch_size), :]
+            self._A += (h.T @ h).double() / n
+            self._B += (h.T @ x).double() / n
 
 
     def _update_one_pass(self, l1_reg_W, l2_reg_W):
@@ -75,8 +93,12 @@ class NMFOnlineHALS(NMFOnlineBase):
             indices = torch.randperm(self.X.shape[0], device=self._device_type)
         else:
             indices = torch.arange(self.X.shape[0], device=self._device_type)
-        A = torch.zeros((self.k, self.k), dtype=self._tensor_dtype, device=self._device_type)
-        B = torch.zeros((self.k, self.X.shape[1]), dtype=self._tensor_dtype, device=self._device_type)
+        n = self.X.shape[0]
+        if self._persistent_stats:
+            A, B = self._A, self._B
+        else:
+            A = torch.zeros((self.k, self.k), dtype=self._tensor_dtype, device=self._device_type)
+            B = torch.zeros((self.k, self.X.shape[1]), dtype=self._tensor_dtype, device=self._device_type)
 
         i = 0
         num_processed = 0
@@ -85,6 +107,11 @@ class NMFOnlineHALS(NMFOnlineBase):
             cur_minibatch_size = idx.shape[0]
             x = self.X[idx, :]
             h = self.H[idx, :]
+
+            if self._persistent_stats:
+                # Remove this block's contribution from the previous pass (h is still the old H here).
+                A -= (h.T @ h).double() / n
+                B -= (h.T @ x).double() / n
 
             # Online update H.
             WWT = self.W @ self.W.T
@@ -117,31 +144,38 @@ class NMFOnlineHALS(NMFOnlineBase):
             self.H[idx, :] = h
 
             # Update sufficient statistics A and B.
-            num_after = num_processed + cur_minibatch_size
+            if self._persistent_stats:
+                # Add this block's fresh contribution; A, B stay averages over all n cells.
+                A += (h.T @ h).double() / n
+                B += (h.T @ x).double() / n
+                A_w, B_w = A.to(self._tensor_dtype), B.to(self._tensor_dtype)
+            else:
+                num_after = num_processed + cur_minibatch_size
 
-            A *= num_processed
-            A += h.T @ h
-            A /= num_after
+                A *= num_processed
+                A += h.T @ h
+                A /= num_after
 
-            B *= num_processed
-            B += h.T @ x
-            B /= num_after
+                B *= num_processed
+                B += h.T @ x
+                B /= num_after
 
-            num_processed = num_after
+                num_processed = num_after
+                A_w, B_w = A, B
 
             # Online update W.
             for j in range(self._minibatch_max_iter):
                 cur_max = 0.0
 
                 for k in range(self.k):
-                    numer = B[k, :] - A[k, :] @ self.W
+                    numer = B_w[k, :] - A_w[k, :] @ self.W
                     if l1_reg_W > 0.0:
                         numer -= l1_reg_W
                     if l2_reg_W > 0.0:
-                        denom = (A[k, k] + l2_reg_W).clamp_min(self._eps)
-                        w_new = self.W[k, :] * (A[k, k] / denom) + numer / denom
+                        denom = (A_w[k, k] + l2_reg_W).clamp_min(self._eps)
+                        w_new = self.W[k, :] * (A_w[k, k] / denom) + numer / denom
                     else:
-                        w_new = self.W[k, :] + numer / A[k, k].clamp_min(self._eps)
+                        w_new = self.W[k, :] + numer / A_w[k, k].clamp_min(self._eps)
                     # Per-entry guard: zero only the non-finite entries, not the whole row.
                     w_new = torch.nan_to_num(w_new, nan=0.0, posinf=0.0, neginf=0.0).maximum(self._zero)
                     cur_max = max(cur_max, torch.abs(self.W[k, :] - w_new).max())
@@ -155,6 +189,10 @@ class NMFOnlineHALS(NMFOnlineBase):
                       f"{' (hit max_iter)' if j + 1 == self._minibatch_max_iter else ''}.")
             # print(f"            max|dW|={float(cur_max):.4g}, rel={float(cur_max / self.W.mean()):.4g} (tol {self._w_tol}).")
             i += self._minibatch_size
+
+        if self._persistent_stats:
+            # A, B were updated in place, so this is a no-op; it marks that they carry into the next pass.
+            self._A, self._B = A, B
 
 
     def _update_H(self):
@@ -204,12 +242,16 @@ class NMFOnlineHALS(NMFOnlineBase):
 
         W·H, and therefore the loss, is unchanged. Without this, online HALS lets a component's
         W row grow every pass while its H column shrinks, until float32 overflows (inf -> NaN).
-        Called between passes, where A and B are rebuilt from scratch, so they need no rescaling.
+        With persistent stats, A and B are rescaled to match the new H: (HD)ᵀ(HD) = DAD, (HD)ᵀX = DB.
         """
         norms = self.W.norm(dim=1)
         norms = torch.where(norms > 0, norms, torch.ones_like(norms))  # leave all-zero rows as they are
         self.W /= norms[:, None]
         self.H *= norms[None, :]
+        if self._persistent_stats:
+            nd = norms.double()
+            self._A *= nd[:, None] * nd[None, :]
+            self._B *= nd[:, None]
 
 
     def _run_passes_legacy(self, l1_reg_W, l2_reg_W):
@@ -291,6 +333,9 @@ class NMFOnlineHALS(NMFOnlineBase):
         l2_reg_W = self._l2_reg_W / self.X.shape[0]
 
         print(f"Rescale W rows to unit norm after each pass: {self._rescale}")
+        print(f"Persistent A/B over all cells: {self._persistent_stats}")
+        if self._persistent_stats:
+            self._init_stats()
         self.num_iters = -1
         if self._patience is None:
             self._run_passes_legacy(l1_reg_W, l2_reg_W)
